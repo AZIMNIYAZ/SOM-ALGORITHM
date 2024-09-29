@@ -1,0 +1,158 @@
+!pip install minisom pandas numpy matplotlib
+
+import pandas as pd
+
+# Load white Wine Quality Dataset (White wine)
+url = 'https://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/winequality-white.csv'
+data = pd.read_csv(url, sep=';')
+
+# Check the first few rows of the dataset
+data.head()
+
+from sklearn.preprocessing import MinMaxScaler
+
+# Select input features (drop the quality column)
+X = data.drop('quality', axis=1)
+
+# Normalize the data using MinMaxScaler
+scaler = MinMaxScaler()
+X_normalized = scaler.fit_transform(X)
+
+# Check the normalized data
+pd.DataFrame(X_normalized, columns=X.columns).head()
+from minisom import MiniSom
+
+# Initialize SOM: grid size (10x10), input length (11 features), sigma (spread), and learning rate
+som = MiniSom(x=10, y=10, input_len=11, sigma=1.0, learning_rate=0.5)
+
+# Randomly initialize the weights of the SOM
+som.random_weights_init(X_normalized)
+
+# Train the SOM for 100 iterations
+som.train_random(X_normalized, 100)
+import matplotlib.pyplot as plt
+from pylab import bone, pcolor, colorbar
+
+# Plot the SOM distance map
+bone()  # Create the SOM grid
+pcolor(som.distance_map().T)  # Distance map as background
+colorbar()  # Add color legend
+plt.show()
+
+from pylab import plot
+
+# Visualize the wines on the SOM grid
+bone()
+pcolor(som.distance_map().T)
+colorbar()
+
+# Define markers and colors
+markers = ['o', 's']
+colors = ['r', 'g']
+
+# Plot each wine on the SOM grid
+for i, x in enumerate(X_normalized):
+    winner = som.winner(x)  # Find the winning neuron for each wine
+    plot(winner[0] + 0.5, winner[1] + 0.5, markers[data['quality'].iloc[i] > 5], 
+         markeredgecolor=colors[data['quality'].iloc[i] > 5], markerfacecolor='None', 
+         markersize=10, markeredgewidth=2)
+
+plt.show()
+
+# Increase the grid size to 20x20
+som = MiniSom(x=20, y=20, input_len=11, sigma=1.0, learning_rate=0.5)
+
+# Train the SOM with the increased grid size
+som.train_random(X_normalized, 500)
+
+import matplotlib.pyplot as plt
+import numpy as np  # Import NumPy
+
+# Count the occurrences of each wine quality score
+quality_counts = data['quality'].value_counts()
+
+# Colors for each quality score
+colors = plt.cm.Paired(np.linspace(0, 1, len(quality_counts)))
+
+# Create an improved pie chart
+plt.figure(figsize=(8, 8))
+plt.pie(quality_counts, 
+        labels=[f'Quality {q}' for q in quality_counts.index],  # Clear labels for each slice
+        autopct='%1.1f%%',  # Show percentages
+        startangle=90,  # Rotate pie chart
+        colors=colors,  # Assign colors
+        wedgeprops={'edgecolor': 'black'})  # Add border to slices
+
+# Add a title
+plt.title('Distribution of Wine Quality Scores', fontsize=14)
+
+# Create a legend for clarity
+plt.legend([f'Quality {q}' for q in quality_counts.index], title="Wine Quality", loc='best')
+
+# Show the pie chart
+plt.show()
+
+import matplotlib.pyplot as plt
+from collections import Counter
+
+# Get the winning nodes (clusters) for each wine
+win_map = som.win_map(X_normalized)
+
+# Count the number of wines in each cluster (winning node)
+cluster_counts = [len(win_map[win]) for win in win_map]
+
+# Create a bar chart of the cluster sizes
+plt.figure(figsize=(14, 7))  # Increased figure size for better visibility
+bars = plt.bar(range(len(cluster_counts)), cluster_counts, color='blue')
+
+# Add title and labels
+plt.title('Number of Wines in Each Cluster (SOM Nodes)', fontsize=16)
+plt.xlabel('Cluster (SOM Node)', fontsize=14)
+plt.ylabel('Number of Wines', fontsize=14)
+
+# Set X-ticks to represent cluster numbers with rotation for clarity
+plt.xticks(range(len(cluster_counts)), [f'Cluster {i}' for i in range(len(cluster_counts))], rotation=45, ha='right')
+
+# Add gridlines for better readability
+plt.grid(axis='y', linestyle='--', alpha=0.7)
+
+# Annotate the number of wines above each bar
+for bar in bars:
+    yval = bar.get_height()
+    plt.text(bar.get_x() + bar.get_width()/2, yval, int(yval), ha='center', va='bottom', fontsize=10)
+
+# Show the bar chart
+plt.tight_layout()  # Adjust layout to prevent clipping of labels
+plt.show()
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+# Choose a specific SOM cluster to analyze
+cluster_wines = np.array(win_map[(5, 5)])  # Example cluster (5,5) from the SOM grid
+
+# Calculate the average chemical properties for wines in this cluster
+average_properties = np.mean(cluster_wines, axis=0)
+
+# Plot a line graph of the average properties
+plt.figure(figsize=(12, 6))
+plt.plot(X.columns, average_properties, marker='o', linestyle='-', color='green', markersize=8)
+
+# Add title and labels
+plt.title('Average Chemical Properties of Wines in Cluster (5,5)', fontsize=16)
+plt.xlabel('Chemical Features', fontsize=14)
+plt.ylabel('Average Value (Normalized)', fontsize=14)
+
+# Add gridlines for better readability
+plt.grid(axis='y', linestyle='--', alpha=0.7)
+
+# Annotate the average values above each point
+for i, value in enumerate(average_properties):
+    plt.text(X.columns[i], value, f'{value:.2f}', ha='center', va='bottom', fontsize=10)
+
+# Set X-ticks to show chemical feature names
+plt.xticks(rotation=45)  # Rotate labels for better visibility
+
+# Show the line chart
+plt.tight_layout()  # Adjust layout to prevent clipping of labels
+plt.show()
